@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projeto Inclusão - IFMO</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    h1 {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 1.8rem;
+    }
+
+    .buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 20px 0;
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .buttons button {
+      padding: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    #preview {
+      width: 100%;
+      max-width: 600px;
+      height: auto;
+      display: none;
+      margin-bottom: 10px;
+    }
+
+    img {
+      width: 100%;
+      max-width: 600px;
+      height: auto;
+      margin-top: 10px;
+    }
+
+    #resultado {
+      margin: 20px;
+      padding: 10px;
+      background: #fff;
+      border-radius: 5px;
+      width: 90%;
+      max-width: 600px;
+      word-wrap: break-word;
+    }
+
+    @media (min-width: 600px) {
+      .buttons {
+        flex-direction: row;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Projeto Inclusão - IFMO</h1>
+
+  <div class="buttons">
+    <button style="background-color:lightskyblue" id="ler-imagem">Ler Imagem</button>
+    <button style="background-color:lightgreen;" id="capturar" disabled>Capturar</button>
+  </div>
+
+  <video id="preview"></video>
+  <div id="resultado"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <script>
+    const lerImagemBtn = document.getElementById('ler-imagem');
+    const capturarBtn = document.getElementById('capturar');
+    const resultadoDiv = document.getElementById('resultado');
+    const previewVideo = document.getElementById('preview');
+    let video, canvas, context, stream, img;
+
+    function abrirCamera() {
+      resetarVideo();
+      const constraints = { video: { facingMode: 'environment' }, audio: false };
+
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(function (mediaStream) {
+          stream = mediaStream;
+          previewVideo.srcObject = mediaStream;
+          previewVideo.style.display = 'block';
+          previewVideo.play();
+          lerImagemBtn.disabled = true;
+          capturarBtn.disabled = false;
+        })
+        .catch(function (err) {
+          console.error('Erro ao abrir a câmera: ', err);
+        });
+    }
+
+    function capturarImagem() {
+      canvas = document.createElement('canvas');
+      context = canvas.getContext('2d');
+      const width = previewVideo.videoWidth;
+      const height = previewVideo.videoHeight;
+      canvas.width = width;
+      canvas.height = height;
+      context.drawImage(previewVideo, 0, 0, width, height);
+      const imageData = canvas.toDataURL('image/png');
+
+      img = document.createElement('img');
+      img.src = imageData;
+      document.body.appendChild(img);
+
+      converterImagem(imageData);
+    }
+
+    function converterImagem(textoImagem) {
+      Tesseract.recognize(textoImagem, 'por')
+        .then(function (result) {
+          const textoConvertido = result.data.text;
+          resultadoDiv.textContent = textoConvertido;
+          lerTexto(textoConvertido);
+          fecharCamera();
+        })
+        .catch(function (err) {
+          console.error('Erro ao converter a imagem: ', err);
+        });
+    }
+
+    function fecharCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        previewVideo.style.display = 'none';
+        lerImagemBtn.disabled = false;
+        capturarBtn.disabled = true;
+      }
+    }
+
+    function resetarVideo() {
+      previewVideo.pause();
+      previewVideo.srcObject = null;
+      resultadoDiv.textContent = "";
+      if (img) {
+        img.remove();
+        img = null;
+      }
+    }
+
+    function lerTexto(texto) {
+      const utterance = new SpeechSynthesisUtterance();
+      utterance.text = texto;
+      speechSynthesis.speak(utterance);
+    }
+
+    lerImagemBtn.addEventListener('click', abrirCamera);
+    capturarBtn.addEventListener('click', capturarImagem);
+  </script>
+</body>
+
+</html>
+
